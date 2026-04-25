@@ -19,6 +19,7 @@ function FloatingToolbar(props) {
   const [closeable, setCloseable] = useState(props.closeable)
   const [position, setPosition] = useState(getClientPosition(props.container))
   const [virtualPosition, setVirtualPosition] = useState({ x: 0, y: 0 })
+  const [session, setSession] = useState(props.session)
   const windowSize = useClampWindowSize([750, 1500], [0, Infinity])
   const config = useConfig(() => {
     setRender(true)
@@ -98,7 +99,7 @@ function FloatingToolbar(props) {
           >
             <div className="chatgptbox-container">
               <ConversationCard
-                session={props.session}
+                session={session}
                 question={prompt}
                 draggable={true}
                 closeable={closeable}
@@ -121,7 +122,7 @@ function FloatingToolbar(props) {
       return <div />
 
     const tools = []
-    const pushTool = (iconKey, name, genPrompt) => {
+    const pushTool = (iconKey, name, genPrompt, toolConfig = {}) => {
       tools.push(
         cloneElement(toolsConfig[iconKey].icon, {
           size: 24,
@@ -131,6 +132,10 @@ function FloatingToolbar(props) {
             const p = getClientPosition(props.container)
             props.container.style.position = 'fixed'
             setPosition(p)
+            // 让工具配置中的元数据（如 disableThinking）可以参与到本次请求的 session 中
+            if (toolConfig.disableThinking) {
+              setSession((prev) => ({ ...prev, disableThinking: true }))
+            }
             setPrompt(await genPrompt(selection))
             setTriggered(true)
           },
@@ -141,7 +146,7 @@ function FloatingToolbar(props) {
     for (const key in toolsConfig) {
       if (config.activeSelectionTools.includes(key)) {
         const toolConfig = toolsConfig[key]
-        pushTool(key, t(toolConfig.label), toolConfig.genPrompt)
+        pushTool(key, t(toolConfig.label), toolConfig.genPrompt, toolConfig)
       }
     }
     for (const tool of config.customSelectionTools) {

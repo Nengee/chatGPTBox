@@ -52,6 +52,8 @@ export const config = {
     genPrompt: createGenPrompt({
       isTranslation: true,
     }),
+    // Translate 本质是一次性轻量翻译任务，不需要思考模式（仅对支持思考模式的模型有效，如 DeepSeek-Chat）
+    disableThinking: true,
   },
   translateToEn: {
     icon: <Globe />,

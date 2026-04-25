@@ -14,6 +14,7 @@ import { t } from 'i18next'
  * @property {string|null} modelName
  * @property {boolean|null} autoClean
  * @property {boolean} isRetry
+ * @property {boolean} disableThinking - 单次请求是否强制关闭思考模式（仅对支持思考模式的模型有效，例如 DeepSeek-Chat）
  * @property {string|null} conversationId - chatGPT web mode
  * @property {string|null} messageId - chatGPT web mode
  * @property {string|null} parentMessageId - chatGPT web mode
@@ -48,6 +49,7 @@ export function initSession({
   autoClean = false,
   apiMode = null,
   extraCustomModelName = '',
+  disableThinking = false,
 } = {}) {
   return {
     // common
@@ -72,6 +74,7 @@ export function initSession({
 
     autoClean,
     isRetry: false,
+    disableThinking,
 
     // chatgpt-web
     conversationId: null,

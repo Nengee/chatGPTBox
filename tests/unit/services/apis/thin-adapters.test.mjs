@@ -130,3 +130,58 @@ test('chatglm-api: reads chatglmApiKey from config', async (t) => {
 
   assert.equal(capturedInit.headers.Authorization, 'Bearer glm-secret')
 })
+
+const captureDeepSeekBody = async (t, sessionOverrides) => {
+  t.mock.method(console, 'debug', () => {})
+  setStorage(commonStorage)
+
+  const session = { ...makeSession(), ...sessionOverrides }
+  const port = createFakePort()
+
+  let capturedInit
+  t.mock.method(globalThis, 'fetch', async (_input, init) => {
+    capturedInit = init
+    return createMockSseResponse(sseChunks)
+  })
+
+  await generateAnswersWithDeepSeekApi(port, 'Q', session, 'ds-key')
+  return JSON.parse(capturedInit.body)
+}
+
+// 通过 customApiModelKeys 这种「Always Custom」分组构造可被 getModelValue 直接解析为
+// 想要 modelValue 的 apiMode，避免依赖 Models 配置中具体的 deepseek 模型 key 映射。
+const apiModeForCustomValue = (customName) => ({
+  groupName: 'customApiModelKeys',
+  customName,
+})
+
+test('deepseek-api: deepseek-v4-flash keeps thinking by default (no override)', async (t) => {
+  const body = await captureDeepSeekBody(t, {
+    apiMode: apiModeForCustomValue('deepseek-v4-flash'),
+  })
+  assert.equal(body.thinking, undefined)
+})
+
+test('deepseek-api: deepseek-v4-flash disables thinking when session.disableThinking is true', async (t) => {
+  const body = await captureDeepSeekBody(t, {
+    apiMode: apiModeForCustomValue('deepseek-v4-flash'),
+    disableThinking: true,
+  })
+  assert.deepEqual(body.thinking, { type: 'disabled' })
+})
+
+test('deepseek-api: deepseek-v4-pro disables thinking when session.disableThinking is true', async (t) => {
+  const body = await captureDeepSeekBody(t, {
+    apiMode: apiModeForCustomValue('deepseek-v4-pro'),
+    disableThinking: true,
+  })
+  assert.deepEqual(body.thinking, { type: 'disabled' })
+})
+
+test('deepseek-api: non-toggleable models never send thinking override even if disableThinking set', async (t) => {
+  const body = await captureDeepSeekBody(t, {
+    modelName: 'deepseek_reasoner',
+    disableThinking: true,
+  })
+  assert.equal(body.thinking, undefined)
+})
