@@ -42,7 +42,7 @@ export const config = {
     label: 'Explain',
     genPrompt: createGenPrompt({
       message:
-        'You are an expert teacher. Explain the following content in simple terms and highlight the key points',
+        'You are an expert teacher. Explain the following content in simple terms and highlight the key points by bolding them. Keep it clear and beginner-friendly.',
       includeLanguagePrefix: true,
     }),
   },

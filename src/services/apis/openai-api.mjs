@@ -175,11 +175,11 @@ export async function generateAnswersWithOpenAiApiCompat(
       const delta = data.choices[0]?.delta?.content
       const content = data.choices[0]?.message?.content
       const text = data.choices[0]?.text
-      if (delta !== undefined) {
+      if (typeof delta === 'string') {
         answer += delta
-      } else if (content) {
+      } else if (typeof content === 'string') {
         answer = content
-      } else if (text) {
+      } else if (typeof text === 'string') {
         answer += text
       }
       port.postMessage({ answer: answer, done: false, session: null })

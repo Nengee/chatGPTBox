@@ -163,6 +163,47 @@ test('ignores null message.content to avoid null-prefixed answers', async (t) =>
   assert.deepEqual(session.conversationRecords.at(-1), { question: 'Q', answer: 'Hi' })
 })
 
+test('ignores null delta.content reasoning chunks to avoid null-prefixed answers', async (t) => {
+  t.mock.method(console, 'debug', () => {})
+  setStorage({
+    maxConversationContextLength: 2,
+    maxResponseTokenLength: 128,
+    temperature: 0.3,
+  })
+
+  const session = {
+    modelName: 'customModel',
+    conversationRecords: [],
+    isRetry: false,
+  }
+  const port = createFakePort()
+
+  t.mock.method(globalThis, 'fetch', async () =>
+    createMockSseResponse([
+      'data: {"choices":[{"delta":{"content":null,"reasoning_content":"thinking"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":null,"reasoning_content":"more"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"Hi"},"finish_reason":"stop"}]}\n\n',
+    ]),
+  )
+
+  await generateAnswersWithCustomApi(
+    port,
+    'Q',
+    session,
+    'https://custom.api/v1/chat',
+    'key',
+    'model',
+  )
+
+  const partialAnswers = port.postedMessages.filter((m) => m.done === false).map((m) => m.answer)
+  assert.equal(
+    partialAnswers.some((a) => typeof a === 'string' && a.includes('null')),
+    false,
+  )
+  assert.equal(partialAnswers.at(-1), 'Hi')
+  assert.deepEqual(session.conversationRecords.at(-1), { question: 'Q', answer: 'Hi' })
+})
+
 test('handles choices[].text response schema', async (t) => {
   t.mock.method(console, 'debug', () => {})
   setStorage({

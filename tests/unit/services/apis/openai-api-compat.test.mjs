@@ -598,6 +598,47 @@ test('generateAnswersWithOpenAiApiCompat falls back to status text when JSON err
   assert.deepEqual(port.listenerCounts(), { onMessage: 0, onDisconnect: 0 })
 })
 
+test('generateAnswersWithOpenAiApiCompat ignores reasoning_content chunks with null delta.content', async (t) => {
+  t.mock.method(console, 'debug', () => {})
+  setStorage({
+    maxConversationContextLength: 3,
+    maxResponseTokenLength: 256,
+    temperature: 0.2,
+  })
+
+  const session = {
+    modelName: 'chatgptApi4oMini',
+    conversationRecords: [],
+    isRetry: false,
+  }
+  const port = createFakePort()
+
+  t.mock.method(globalThis, 'fetch', async () =>
+    createMockSseResponse([
+      'data: {"choices":[{"delta":{"content":null,"reasoning_content":"Let me think"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":null,"reasoning_content":" about it"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"lo"},"finish_reason":"stop"}]}\n\n',
+    ]),
+  )
+
+  await generateAnswersWithOpenAiApiCompat(
+    'https://api.example.com/v1',
+    port,
+    'CurrentQ',
+    session,
+    'sk-test',
+  )
+
+  const partialAnswers = port.postedMessages.filter((m) => m.done === false).map((m) => m.answer)
+  assert.equal(
+    partialAnswers.some((a) => typeof a === 'string' && a.includes('null')),
+    false,
+  )
+  assert.equal(partialAnswers.at(-1), 'Hello')
+  assert.deepEqual(session.conversationRecords.at(-1), { question: 'CurrentQ', answer: 'Hello' })
+})
+
 test('generateAnswersWithOpenAiApiCompat supports message.content fallback', async (t) => {
   t.mock.method(console, 'debug', () => {})
   setStorage({
